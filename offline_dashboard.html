@@ -56,6 +56,8 @@ select {
 .quote .pill.cn { background: #3a2550; color: #ffbce3; }
 .quote .pill.en { background: #1e3b55; color: #9ad4ff; }
 .quote .pill.hn { background: #3a3a25; color: #ffe7ad; }
+.quote .pill.x-en { background: #1e2f55; color: #b7ccff; }
+.quote .pill.x-cn { background: #3a2550; color: #ffbce3; }
 .quote p { margin: 4px 0; }
 .quote .t { color: #9aa3d1; font-size: 13px; font-style: italic; }
 .review { display: grid; gap: 14px; }
@@ -85,7 +87,7 @@ footer { padding: 20px 32px 30px; color: #5c6696; font-size: 11px; }
 <body>
   <header>
     <h1>AI 心智监测看板 <span class="tag">Offline</span></h1>
-    <p class="sub">离线静态版：内置 Hacker News 公开数据（约 100 条），可直接双击打开，不依赖后端服务。</p>
+    <p class="sub">离线静态版：内置 Hacker News 公开数据（约 100 条）+ 你提供的 X 真实用户观点样本，可直接双击打开，不依赖后端服务。</p>
   </header>
 
   <nav class="tabs">
@@ -107,6 +109,8 @@ footer { padding: 20px 32px 30px; color: #5c6696; font-size: 11px; }
         <select id="trend-region">
           <option value="">全部</option>
           <option value="HN">Hacker News</option>
+          <option value="X-EN">X / 英文</option>
+          <option value="X-CN">X / 中文</option>
         </select>
       </label>
       <label>用户分层
@@ -131,9 +135,17 @@ footer { padding: 20px 32px 30px; color: #5c6696; font-size: 11px; }
           <option value="anxiety">AI 焦虑</option>
         </select>
       </label>
+      <label>平台
+        <select id="cmp-region">
+          <option value="">全部</option>
+          <option value="HN">Hacker News</option>
+          <option value="X-EN">X / 英文</option>
+          <option value="X-CN">X / 中文</option>
+        </select>
+      </label>
     </div>
     <div>
-      <h3 style="margin:0 0 8px;font-size:14px;color:#b4bbe4">Hacker News · 立场占比(%)</h3>
+      <h3 style="margin:0 0 8px;font-size:14px;color:#b4bbe4">立场占比(%)</h3>
       <div class="chart-wrap"><canvas id="cmp-en"></canvas></div>
     </div>
     <p class="hint">按月统计：同一议题下各立场的百分比占比。</p>
@@ -148,7 +160,12 @@ footer { padding: 20px 32px 30px; color: #5c6696; font-size: 11px; }
         </select>
       </label>
       <label>平台
-        <select id="q-region"><option value="">全部</option><option value="HN">Hacker News</option></select>
+        <select id="q-region">
+          <option value="">全部</option>
+          <option value="HN">Hacker News</option>
+          <option value="X-EN">X / 英文</option>
+          <option value="X-CN">X / 中文</option>
+        </select>
       </label>
     </div>
     <div id="quotes-list" class="quotes"></div>
@@ -171,7 +188,7 @@ footer { padding: 20px 32px 30px; color: #5c6696; font-size: 11px; }
 
   <footer>
     <small>
-      数据来自 Hacker News（公开可访问内容）；离线版内置抓取结果用于演示。
+      数据来自 Hacker News（公开可访问内容）与用户提供的 X 观点样本；离线版内置抓取/整理结果用于演示。
     </small>
   </footer>
 
@@ -234,6 +251,137 @@ let POSTS = [
   { id: 34, source: "moe_cn", region: "CN", author_type: "kol", topic: "kids_learn", stance: "ai_literacy", posted_at: "2026-01-30", original_text: "推进中小学人工智能教育，构建面向未来的人机协作素养课程体系。", translation: "Promote AI education in primary/secondary schools; build a future-facing human-AI collaboration curriculum.", url: "http://moe.gov.cn/example_policy", human_verified: 0, human_notes: "", ai_confidence: 0.8, ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"ai_literacy\",\"author_type\":\"kol\",\"region\":\"CN\"}" },
   { id: 35, source: "commonsense", region: "EN", author_type: "kol", topic: "kids_learn", stance: "humanities_critical", posted_at: "2026-01-14", original_text: "Parents should prioritize media literacy and critical evaluation of AI output over tool-specific skills.", translation: "家长应把媒介素养和 AI 输出的批判性评估放在工具技能之前。", url: "https://commonsensemedia.org/example_ai_guide", human_verified: 0, human_notes: "", ai_confidence: 0.8, ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"humanities_critical\",\"author_type\":\"kol\",\"region\":\"EN\"}" },
 ];
+
+POSTS = POSTS.concat([
+  {
+    id: 101,
+    source: "x",
+    region: "X-EN",
+    author_type: "kol",
+    topic: "kids_learn",
+    stance: "ai_literacy",
+    posted_at: "2026-04-02",
+    original_text: "@umarsaif: \"AI had made [syntax] skill (almost) redundant. Now you need systems designers... universities need to produce great computer scientists, not good programmers...\"",
+    translation: "强调教育重心应从语法转向系统设计与架构能力。",
+    url: "https://x.com/umarsaif",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.8,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"ai_literacy\",\"author_type\":\"kol\",\"region\":\"X-EN\"}",
+  },
+  {
+    id: 102,
+    source: "x",
+    region: "X-CN",
+    author_type: "kol",
+    topic: "kids_learn",
+    stance: "no_code_needed",
+    posted_at: "2026-04-02",
+    original_text: "@lidangzzz: \"你们现在千万别选计算机专业……AI一出来，程序员全裁员……CTO带着曲阜师范中文硕士vibe coding，半个月写了个新的操作系统……\"",
+    translation: "",
+    url: "https://x.com/lidangzzz",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.78,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"no_code_needed\",\"author_type\":\"kol\",\"region\":\"X-CN\"}",
+  },
+  {
+    id: 103,
+    source: "x",
+    region: "X-EN",
+    author_type: "tech",
+    topic: "kids_learn",
+    stance: "still_code",
+    posted_at: "2026-04-03",
+    original_text: "@wagslane: \"I keep hearing about how learning to code is dead. It's ALL cope...\"",
+    translation: "反对“coding is dead”，强调底层逻辑与工程训练仍是核心。",
+    url: "https://x.com/wagslane",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.8,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"still_code\",\"author_type\":\"tech\",\"region\":\"X-EN\"}",
+  },
+  {
+    id: 104,
+    source: "x",
+    region: "X-EN",
+    author_type: "tech",
+    topic: "kids_learn",
+    stance: "still_code",
+    posted_at: "2026-04-03",
+    original_text: "@aarushisdev: \"vibe coding is great for building. terrible for learning...\"",
+    translation: "认为 Vibe Coding 适合快速构建，但会削弱初学者的深度理解。",
+    url: "https://x.com/aarushisdev",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.76,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"still_code\",\"author_type\":\"tech\",\"region\":\"X-EN\"}",
+  },
+  {
+    id: 105,
+    source: "x",
+    region: "X-CN",
+    author_type: "tech",
+    topic: "kids_learn",
+    stance: "still_code",
+    posted_at: "2026-04-05",
+    original_text: "@damiaoedux: \"现在AI能写代码了，反而让踏实学编程成了最高性价比的投资……企业绝不会舍弃程序员而选只会AI的小白。\"",
+    translation: "",
+    url: "https://x.com/damiaoedux",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.8,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"still_code\",\"author_type\":\"tech\",\"region\":\"X-CN\"}",
+  },
+  {
+    id: 106,
+    source: "x",
+    region: "X-CN",
+    author_type: "tech",
+    topic: "kids_learn",
+    stance: "humanities_critical",
+    posted_at: "2026-04-05",
+    original_text: "@goocarlos: \"未来软件工程师的价值，呈倒U型...Vibe Coding陷阱：如果只会用AI工具生成...只是更快地生产垃圾。\"",
+    translation: "",
+    url: "https://x.com/goocarlos",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.78,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"humanities_critical\",\"author_type\":\"tech\",\"region\":\"X-CN\"}",
+  },
+  {
+    id: 107,
+    source: "x",
+    region: "X-CN",
+    author_type: "parent",
+    topic: "kids_learn",
+    stance: "humanities_critical",
+    posted_at: "2026-04-08",
+    original_text: "@innomad_lo: \"未来最重要的能力，不是编程，不是数学，是语言。AI会变成像搜索引擎一样的基础工具……娃的教育核心是好奇心和表达力。\"",
+    translation: "",
+    url: "https://x.com/innomad_lo",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.8,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"humanities_critical\",\"author_type\":\"parent\",\"region\":\"X-CN\"}",
+  },
+  {
+    id: 108,
+    source: "x",
+    region: "X-CN",
+    author_type: "general",
+    topic: "kids_learn",
+    stance: "ai_literacy",
+    posted_at: "2026-04-09",
+    original_text: "@CyberCatX: \"现在的教育还是应试教育……如何运用AI却完全没有进入他们的课程……应试教育抹杀了好奇心和创造力。\"",
+    translation: "",
+    url: "https://x.com/CyberCatX",
+    human_verified: 0,
+    human_notes: "",
+    ai_confidence: 0.78,
+    ai_labels_json: "{\"topic\":\"kids_learn\",\"stance\":\"ai_literacy\",\"author_type\":\"general\",\"region\":\"X-CN\"}",
+  },
+]);
 
 POSTS =
 [
@@ -2033,8 +2181,8 @@ function computeTrends({ topic, region, author_type }) {
   return { months, datasets };
 }
 
-function computeCompare(topic) {
-  const rows = applyFilters(POSTS, { topic });
+function computeCompare(topic, region) {
+  const rows = applyFilters(POSTS, { topic, region });
   const monthSet = new Set();
   rows.forEach(r => monthSet.add(monthKey(r.posted_at)));
   const months = Array.from(monthSet).sort();
@@ -2087,7 +2235,8 @@ function loadTrends() {
 
 function loadCompare() {
   const topic = document.getElementById("cmp-topic").value;
-  const { months, datasets } = computeCompare(topic);
+  const region = document.getElementById("cmp-region").value;
+  const { months, datasets } = computeCompare(topic, region);
   renderStackedBarChart(document.getElementById("cmp-en"), months, datasets);
 }
 
@@ -2152,7 +2301,7 @@ function renderReviewCard(p) {
   const authorOpts = Object.entries(META.author_labels).map(
     ([v,l]) => `<option value="${v}" ${p.author_type===v?"selected":""}>${l}</option>`
   ).join("");
-  const regionOpts = ["HN"].map(v =>
+  const regionOpts = ["HN","X-EN","X-CN"].map(v =>
     `<option value="${v}" ${p.region===v?"selected":""}>${v}</option>`
   ).join("");
 
@@ -2217,7 +2366,8 @@ document.querySelectorAll(".tab").forEach(btn => {
 
 ["trend-topic", "trend-region", "trend-author"].forEach(id =>
   document.getElementById(id).addEventListener("change", loadTrends));
-document.getElementById("cmp-topic").addEventListener("change", loadCompare);
+["cmp-topic", "cmp-region"].forEach(id =>
+  document.getElementById(id).addEventListener("change", loadCompare));
 ["q-topic", "q-region"].forEach(id =>
   document.getElementById(id).addEventListener("change", loadQuotes));
 document.getElementById("r-filter").addEventListener("change", loadReview);

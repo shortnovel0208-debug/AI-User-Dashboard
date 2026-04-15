@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>AI 心智监测看板 · Demo</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>🧠 AI 心智监测看板 <span class="tag">Minimal Demo</span></h1>
+    <p class="sub">从社媒观点 + 讨论热度，追踪公众对「AI 焦虑」与「AI 时代孩子应学什么」的心态变化。</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="trends">趋势</button>
+    <button class="tab" data-tab="compare">中英对比</button>
+    <button class="tab" data-tab="quotes">观点 & 原文</button>
+    <button class="tab" data-tab="review">人工审核 <span id="review-badge" class="badge"></span></button>
+  </nav>
+
+  <!-- 趋势 -->
+  <section id="tab-trends" class="panel">
+    <div class="controls">
+      <label>议题
+        <select id="trend-topic">
+          <option value="anxiety">AI 是否带来更多焦虑？</option>
+          <option value="kids_learn">AI 时代孩子学什么 / 编程？</option>
+        </select>
+      </label>
+      <label>地区
+        <select id="trend-region">
+          <option value="">全部</option>
+          <option value="CN">中国</option>
+          <option value="EN">英语国家</option>
+        </select>
+      </label>
+      <label>用户分层
+        <select id="trend-author">
+          <option value="">全部</option>
+          <option value="kol">意见领袖</option>
+          <option value="tech">科技从业者</option>
+          <option value="parent">家长</option>
+          <option value="general">普通用户</option>
+        </select>
+      </label>
+    </div>
+    <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+    <p class="hint">每条曲线 = 一种立场的月度讨论量。立场分布变化即心态迁移。</p>
+  </section>
+
+  <!-- 中英对比 -->
+  <section id="tab-compare" class="panel hidden">
+    <div class="controls">
+      <label>议题
+        <select id="cmp-topic">
+          <option value="kids_learn">孩子学什么 / 编程</option>
+          <option value="anxiety">AI 焦虑</option>
+        </select>
+      </label>
+    </div>
+    <div class="two-col">
+      <div><h3>英语国家 · 立场占比(%)</h3><div class="chart-wrap"><canvas id="cmp-en"></canvas></div></div>
+      <div><h3>中国 · 立场占比(%)</h3><div class="chart-wrap"><canvas id="cmp-cn"></canvas></div></div>
+    </div>
+    <p class="hint">假设检验：英语圈的立场变化是否在约 6 个月后在中文圈重现？</p>
+  </section>
+
+  <!-- 观点 + 原文 -->
+  <section id="tab-quotes" class="panel hidden">
+    <div class="controls">
+      <label>议题
+        <select id="q-topic">
+          <option value="anxiety">AI 焦虑</option>
+          <option value="kids_learn">孩子学什么</option>
+        </select>
+      </label>
+      <label>地区
+        <select id="q-region"><option value="">全部</option><option value="CN">中国</option><option value="EN">英语国家</option></select>
+      </label>
+    </div>
+    <div id="quotes-list" class="quotes"></div>
+  </section>
+
+  <!-- 人工审核 -->
+  <section id="tab-review" class="panel hidden">
+    <div class="controls">
+      <label>队列
+        <select id="r-filter">
+          <option value="0">仅未审核</option>
+          <option value="1">已审核</option>
+          <option value="">全部</option>
+        </select>
+      </label>
+      <span id="r-stats" class="stats"></span>
+    </div>
+    <div id="review-list" class="review"></div>
+  </section>
+
+  <footer>
+    <small>
+      数据源占位：Reddit (r/Parenting, r/education, r/MachineLearning)、Mumsnet、知乎、小红书、微博、B 站、公众号、抖音，外加 UNESCO / OECD / Common Sense Media / 教育部。
+      本 Demo 为节选 & 代表性复述样本，生产版本由采集管线直写入库。
+    </small>
+  </footer>
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>

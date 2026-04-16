@@ -956,13 +956,22 @@ if __name__ == "__main__":
     ap.add_argument("--mode", choices=["spread", "focus", "focus_real"], default="spread")
     ap.add_argument("--start", default="2025-10")
     ap.add_argument("--end", default="2026-04")
+    ap.add_argument(
+        "--weights",
+        default="",
+        help="Comma-separated weights for each month in [start,end], e.g. '1,1,1,1,1,1,1'.",
+    )
     ap.add_argument("--out", default="")
     args = ap.parse_args()
 
+    weights = None
+    if args.weights.strip():
+        weights = [float(x.strip()) for x in args.weights.split(",") if x.strip()]
+
     if args.mode == "focus_real":
-        data = generate_focused_realistic(args.count, start_ym=args.start, end_ym=args.end)
+        data = generate_focused_realistic(args.count, start_ym=args.start, end_ym=args.end, weights=weights)
     elif args.mode == "focus":
-        data = generate_focused(args.count, start_ym=args.start, end_ym=args.end)
+        data = generate_focused(args.count, start_ym=args.start, end_ym=args.end, weights=weights)
     else:
         data = generate(args.count)
 

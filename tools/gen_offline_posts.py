@@ -1,3 +1,4 @@
+import argparse
 import json
 
 
@@ -466,6 +467,99 @@ def generate(count: int = 500):
     return out
 
 
-if __name__ == "__main__":
-    print(json.dumps(generate(), ensure_ascii=False, separators=(",", ":")))
+def month_range(start_ym: str, end_ym: str):
+    sy, sm = start_ym.split("-")
+    ey, em = end_ym.split("-")
+    sy, sm, ey, em = int(sy), int(sm), int(ey), int(em)
+    out = []
+    cur = sy * 12 + (sm - 1)
+    end = ey * 12 + (em - 1)
+    while cur <= end:
+        y = cur // 12
+        m = (cur % 12) + 1
+        out.append((y, m))
+        cur += 1
+    return out
 
+
+def allocate_counts(total: int, weights):
+    wsum = sum(weights) or 1
+    raw = [total * w / wsum for w in weights]
+    base = [int(x) for x in raw]
+    remain = total - sum(base)
+    frac = sorted(
+        [(i, raw[i] - base[i]) for i in range(len(weights))],
+        key=lambda t: t[1],
+        reverse=True,
+    )
+    for i in range(remain):
+        base[frac[i % len(frac)][0]] += 1
+    return base
+
+
+def generate_focused(
+    count: int,
+    start_ym: str = "2025-10",
+    end_ym: str = "2026-04",
+    weights=None,
+):
+    weights = weights or [3, 4, 5, 7, 9, 12, 16]
+    months = month_range(start_ym, end_ym)
+    if len(weights) != len(months):
+        raise ValueError("weights length must match month span")
+    per_month = allocate_counts(count, weights)
+
+    out = []
+    gid = 0
+    for mi, (y, m) in enumerate(months):
+        for j in range(per_month[mi]):
+            base = BASE_POSTS[gid % len(BASE_POSTS)]
+            day = 1 + (((gid * 7) + (j * 3)) % 28)
+            posted_at = f"{y:04d}-{m:02d}-{day:02d}"
+            p = dict(base)
+            p["id"] = gid + 1
+            p["posted_at"] = posted_at
+            p["url"] = f'{base["url"]}?v={gid+1}'
+            if base["region"] == "CN":
+                p["original_text"] = f'{base["original_text"]}（样本#{gid+1}）'
+                if base.get("translation"):
+                    p["translation"] = f'{base["translation"]} (sample #{gid+1})'
+            else:
+                p["original_text"] = f'{base["original_text"]} [sample #{gid+1}]'
+                if base.get("translation"):
+                    p["translation"] = f'{base["translation"]}（样本#{gid+1}）'
+            p["human_verified"] = 0
+            p["human_notes"] = ""
+            ai_labels = {
+                "topic": p["topic"],
+                "stance": p["stance"],
+                "author_type": p["author_type"],
+                "region": p["region"],
+            }
+            p["ai_confidence"] = 0.8
+            p["ai_labels_json"] = json.dumps(ai_labels, ensure_ascii=False)
+            out.append(p)
+            gid += 1
+    return out
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--count", type=int, default=500)
+    ap.add_argument("--mode", choices=["spread", "focus"], default="spread")
+    ap.add_argument("--start", default="2025-10")
+    ap.add_argument("--end", default="2026-04")
+    ap.add_argument("--out", default="")
+    args = ap.parse_args()
+
+    if args.mode == "focus":
+        data = generate_focused(args.count, start_ym=args.start, end_ym=args.end)
+    else:
+        data = generate(args.count)
+
+    s = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(s)
+    else:
+        print(s)

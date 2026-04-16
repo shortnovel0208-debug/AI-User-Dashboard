@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 
 
 BASE_POSTS = [
@@ -497,6 +498,243 @@ def allocate_counts(total: int, weights):
     return base
 
 
+class PRNG:
+    def __init__(self, seed: int):
+        self._s = seed & 0x7FFFFFFF
+
+    def rand(self) -> float:
+        self._s = (1103515245 * self._s + 12345) & 0x7FFFFFFF
+        return self._s / 2147483648.0
+
+    def randint(self, a: int, b: int) -> int:
+        if b < a:
+            a, b = b, a
+        return a + int(self.rand() * ((b - a) + 1))
+
+    def choice(self, arr):
+        return arr[self.randint(0, len(arr) - 1)]
+
+
+def pick_weighted(rng: PRNG, items, weights):
+    total = sum(weights) or 1.0
+    x = rng.rand() * total
+    acc = 0.0
+    for it, w in zip(items, weights):
+        acc += w
+        if x <= acc:
+            return it
+    return items[-1]
+
+
+def clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
+
+
+def make_url(source: str, gid: int, topic: str, stance: str):
+    if source == "reddit":
+        return f"https://reddit.com/r/{'Parenting' if topic=='anxiety' else 'education'}/comments/{100000 + gid}/{topic}_{stance}/"
+    if source == "mumsnet":
+        return f"https://mumsnet.com/talk/_/{200000 + gid}-{topic}-{stance}"
+    if source == "zhihu":
+        return f"https://www.zhihu.com/question/{300000 + gid}/answer/{400000 + gid}"
+    if source == "xiaohongshu":
+        return f"https://www.xiaohongshu.com/discovery/item/{500000 + gid}"
+    if source == "weibo":
+        return f"https://weibo.com/{600000 + gid}/{700000 + gid}"
+    if source == "bilibili":
+        return f"https://www.bilibili.com/video/BV{800000 + gid}"
+    if source == "wechat":
+        return f"https://mp.weixin.qq.com/s/{900000 + gid}"
+    if source == "douyin":
+        return f"https://www.douyin.com/video/{1000000 + gid}"
+    if source == "oecd":
+        return f"https://oecd.org/education/{1100000 + gid}"
+    if source == "commonsense":
+        return f"https://commonsensemedia.org/ai/{1200000 + gid}"
+    if source == "moe_cn":
+        return f"http://www.moe.gov.cn/jyb_xwfb/gzdt_gzdt/{1300000 + gid}.html"
+    return f"https://example.com/{gid}"
+
+
+def make_text_cn(topic: str, stance: str, author_type: str, rng: PRNG):
+    ctx = rng.choice(["最近刷到一堆讨论", "身边同事都在聊", "群里又吵起来了", "家长群炸了", "看完一圈我更困惑了"])
+    if topic == "anxiety":
+        if stance == "anxious":
+            core = rng.choice([
+                "感觉未来工作岗位变化太快，孩子现在学的可能几年后就不值钱了。",
+                "越看越焦虑，总觉得要被时代甩下。",
+                "AI 更新太快了，真的不知道该怎么给孩子规划。",
+                "孩子说“反正 AI 都会了”，我一时不知道怎么接话。",
+            ])
+        elif stance == "balanced":
+            core = rng.choice([
+                "焦虑可以理解，但更重要的是让孩子会提问、会判断、会协作。",
+                "与其担心被替代，不如把 AI 当工具，练信息甄别和表达。",
+                "短期会乱，但长期看会出现新岗位；现在先把基础打牢。",
+                "先把学习习惯和思维方式稳住，比追热点课更重要。",
+            ])
+        elif stance == "optimistic":
+            core = rng.choice([
+                "每次技术浪潮都有人焦虑，但最后都是会用工具的人跑得更快。",
+                "孩子用 AI 反而学得更快，我觉得是机会不是威胁。",
+                "把 AI 用起来，反而能把时间省出来做更有价值的事。",
+                "别恐慌，教会孩子验证结果和承担后果就行。",
+            ])
+        else:
+            core = rng.choice([
+                "现在这些“智能体”离真正可靠还差得远，别被营销带节奏。",
+                "很多人把 AI 当万能，其实场景一复杂就翻车。",
+                "我看是焦虑营销，普通人先把手头事做好。",
+                "等落地再说吧，现在讨论太多噪音。",
+            ])
+        suffix = rng.choice(["", "大家怎么看？", "有没有实操建议？", "求推荐靠谱的学习路径。", "欢迎理性讨论。"])
+        return f"{ctx}：{core}{suffix}"
+
+    if stance == "still_code":
+        core = rng.choice([
+            "学编程不是为了以后当码农，是为了学拆解问题和调试思维。",
+            "就算 AI 写代码，懂基本原理的人更能指出哪里不对。",
+            "孩子写一点点代码，才能知道 AI 输出有没有在胡编。",
+            "我家坚持每周做点小项目，比刷题有效。",
+        ])
+    elif stance == "ai_literacy":
+        core = rng.choice([
+            "更应该学 AI 素养：怎么提问、怎么核查、怎么评估风险。",
+            "让孩子学会用 AI 做作品，同时练“验证结果”的习惯。",
+            "工具会变，但方法论不变：信息鉴别、结构化表达、伦理边界。",
+            "与其教语法，不如教如何与 AI 协作完成任务。",
+        ])
+    elif stance == "humanities_critical":
+        core = rng.choice([
+            "AI 时代稀缺的是审美、同理心和批判性思维，阅读讨论更重要。",
+            "写作和表达能拉开差距，别把时间都丢给编程课。",
+            "会提好问题、会讲清楚观点，比会写几行代码更关键。",
+            "我更愿意让孩子去辩论/写作训练，长期收益更大。",
+        ])
+    elif stance == "fundamentals_math":
+        core = rng.choice([
+            "数学统计才是底层能力，AI 工具每年换，数学不会过时。",
+            "把概率和逻辑打牢，才能真正理解模型输出的可靠性。",
+            "先把数理基础练好，再学工具上手会更快。",
+            "理工底子强的人，用 AI 只会更强。",
+        ])
+    else:
+        core = rng.choice([
+            "AI 一句话就能生成代码，没必要再让孩子死记语法了。",
+            "未来可能更像“产品表达”，描述清楚需求比写代码重要。",
+            "我觉得不用强求编程，学点更通用的能力更划算。",
+            "真要学也别太卷，先会用工具解决问题。",
+        ])
+    lead = rng.choice(["关于孩子学什么", "AI 时代教育怎么选", "最近在想这个问题", "被问到最多的就是这个"])
+    suffix = rng.choice(["", "你们家怎么做？", "欢迎补充不同观点。", "求不踩坑建议。", "有资料/课程推荐吗？"])
+    return f"{lead}：{core}{suffix}"
+
+
+def make_text_en(topic: str, stance: str, author_type: str, rng: PRNG):
+    opener = rng.choice(["Hot take", "Real question", "Genuine concern", "Not sure if it's just me", "Curious what others think"])
+    if topic == "anxiety":
+        if stance == "anxious":
+            core = rng.choice([
+                "I keep thinking about what jobs will be left by the time my kid is 18.",
+                "The pace of change is messing with my head and I don't know how to plan.",
+                "My teenager is saying school is pointless because AI will do everything.",
+                "Every week there's a new model and it feels like the floor is moving.",
+            ])
+        elif stance == "balanced":
+            core = rng.choice([
+                "Anxiety is rational, but the action is to build judgment, writing, and collaboration skills.",
+                "Treat AI like a tool: learn to verify, cite sources, and understand limits.",
+                "Short-term disruption is real; long-term there will be new roles. Focus on fundamentals.",
+                "The best hedge is adaptability: problem framing, communication, and learning fast.",
+            ])
+        elif stance == "optimistic":
+            core = rng.choice([
+                "Every tech shift caused panic; people adapted. This will be no different if we stay curious.",
+                "My kid learns faster with AI when we teach verification and humility.",
+                "AI is leverage. The winners will be the ones who can direct it well.",
+                "Less doomscrolling, more building and learning.",
+            ])
+        else:
+            core = rng.choice([
+                "Most of this is marketing. These systems still fail on basic reliability.",
+                "People talk like it's magic, but it breaks the moment you need accountability.",
+                "Until it stops hallucinating, I'm not rearranging my whole life around it.",
+                "The hype is ahead of real-world value for most families.",
+            ])
+        tail = rng.choice(["", "Anyone else?", "How are you handling this?", "Would love practical advice.", "Trying to stay sane here."])
+        return f"{opener}: {core} {tail}".strip()
+
+    if stance == "still_code":
+        core = rng.choice([
+            "Coding teaches decomposition and debugging. That matters even more with AI in the loop.",
+            "If you can't read code, you can't tell when the model is wrong.",
+            "I want my kid to build small projects so they learn iteration and testing.",
+            "AI makes coding more accessible, not obsolete.",
+        ])
+    elif stance == "ai_literacy":
+        core = rng.choice([
+            "Teach prompting, verification, and AI ethics — tool use plus critical thinking.",
+            "Kids should learn to collaborate with AI: set goals, evaluate outputs, and revise.",
+            "The key skill is problem framing and validation, not memorizing syntax.",
+            "AI literacy is the new media literacy.",
+        ])
+    elif stance == "humanities_critical":
+        core = rng.choice([
+            "Writing, argumentation, and taste will outlast any framework or language.",
+            "Critical thinking and empathy are harder to automate — prioritize reading and discussion.",
+            "The scarce skill is asking the right questions and owning consequences.",
+            "Debate club did more for my kid than another coding worksheet.",
+        ])
+    elif stance == "fundamentals_math":
+        core = rng.choice([
+            "Math and stats are the moat. If you understand uncertainty, AI is a tool not a black box.",
+            "Foundations beat fads. Probability and linear algebra will keep paying off.",
+            "A strong quantitative base makes learning new tools trivial.",
+            "Teach fundamentals first, then tools.",
+        ])
+    else:
+        core = rng.choice([
+            "If you can describe what you want, AI can generate the code. Why force syntax early?",
+            "Maybe we should focus on product thinking and communication rather than coding drills.",
+            "Tooling is changing too fast for language-specific classes to age well.",
+            "I’d rather teach kids to build with tools than struggle with boilerplate.",
+        ])
+    end = rng.choice(["", "Thoughts?", "What are you doing with your kids?", "Open to counterarguments.", "Would love resources."])
+    return f"{opener}: {core} {end}".strip()
+
+
+def cn_translation_stub(topic: str, stance: str, rng: PRNG):
+    if topic == "anxiety":
+        return rng.choice([
+            "我有点担心未来的工作会怎么变，孩子该怎么准备。",
+            "变化太快了，规划变得很难。",
+            "孩子说学习没意义，我不知道怎么回应。",
+            "想听听大家有没有更理性的应对方法。",
+        ])
+    return rng.choice([
+        "AI 时代孩子到底该学什么？我更倾向于培养通用能力。",
+        "感觉重点是会用工具并能验证输出，而不是死记语法。",
+        "大家的选择不同，但希望少点焦虑多点实践。",
+        "欢迎分享你们的做法。",
+    ])
+
+
+def en_translation_stub(topic: str, stance: str, rng: PRNG):
+    if topic == "anxiety":
+        return rng.choice([
+            "I’m anxious about how fast jobs are changing and how to prepare kids.",
+            "The pace is overwhelming and planning feels impossible.",
+            "My kid says school is pointless because of AI; I’m not sure what to say.",
+            "Trying to stay practical and not panic.",
+        ])
+    return rng.choice([
+        "What should kids learn in the AI era? I lean toward transferable skills.",
+        "The point is using tools and verifying outputs, not memorizing syntax.",
+        "Different paths work, but practice matters more than hype.",
+        "Would love to hear what others are doing.",
+    ])
+
+
 def generate_focused(
     count: int,
     start_ym: str = "2025-10",
@@ -543,16 +781,187 @@ def generate_focused(
     return out
 
 
+def generate_focused_realistic(
+    count: int,
+    start_ym: str = "2025-10",
+    end_ym: str = "2026-04",
+    weights=None,
+    base_seed: int = 20261004,
+):
+    weights = weights or [3, 4, 5, 7, 9, 12, 16]
+    months = month_range(start_ym, end_ym)
+    if len(weights) != len(months):
+        raise ValueError("weights length must match month span")
+    per_month = allocate_counts(count, weights)
+
+    topic_kids_p = [0.46, 0.48, 0.50, 0.53, 0.56, 0.60, 0.62]
+    region_cn_p = [0.36, 0.38, 0.42, 0.48, 0.55, 0.60, 0.63]
+
+    sources_en = ["reddit", "mumsnet", "x", "oecd", "commonsense"]
+    sources_en_w = [0.58, 0.14, 0.16, 0.06, 0.06]
+    sources_cn = ["zhihu", "xiaohongshu", "weibo", "bilibili", "wechat", "douyin", "moe_cn"]
+    sources_cn_w = [0.24, 0.20, 0.18, 0.12, 0.16, 0.08, 0.02]
+
+    author_types = ["parent", "tech", "general", "kol"]
+    author_w = [0.34, 0.26, 0.24, 0.16]
+
+    anxiety_stances = ["anxious", "balanced", "optimistic", "dismissive"]
+    anxiety_w_by_m = [
+        [0.56, 0.24, 0.14, 0.06],
+        [0.54, 0.26, 0.15, 0.05],
+        [0.50, 0.29, 0.16, 0.05],
+        [0.46, 0.32, 0.17, 0.05],
+        [0.42, 0.34, 0.18, 0.06],
+        [0.38, 0.36, 0.20, 0.06],
+        [0.34, 0.38, 0.22, 0.06],
+    ]
+    kids_stances = ["still_code", "ai_literacy", "humanities_critical", "fundamentals_math", "no_code_needed"]
+    kids_w_by_m = [
+        [0.38, 0.22, 0.18, 0.16, 0.06],
+        [0.35, 0.25, 0.18, 0.16, 0.06],
+        [0.32, 0.28, 0.18, 0.15, 0.07],
+        [0.28, 0.32, 0.18, 0.15, 0.07],
+        [0.25, 0.35, 0.17, 0.15, 0.08],
+        [0.22, 0.38, 0.17, 0.14, 0.09],
+        [0.20, 0.40, 0.17, 0.13, 0.10],
+    ]
+
+    out = []
+    gid = 0
+    for mi, (y, m) in enumerate(months):
+        for _ in range(per_month[mi]):
+            rng = PRNG(base_seed + gid * 97 + mi * 131)
+            topic = "kids_learn" if rng.rand() < topic_kids_p[mi] else "anxiety"
+            region = "CN" if rng.rand() < region_cn_p[mi] else "EN"
+
+            if region == "CN":
+                source = pick_weighted(rng, sources_cn, sources_cn_w)
+            else:
+                source = pick_weighted(rng, sources_en, sources_en_w)
+
+            if source in ("oecd", "commonsense", "moe_cn"):
+                author_type = "kol"
+            elif source == "x":
+                author_type = pick_weighted(rng, author_types, [0.18, 0.32, 0.20, 0.30])
+            elif source == "wechat":
+                author_type = pick_weighted(rng, author_types, [0.18, 0.30, 0.12, 0.40])
+            else:
+                author_type = pick_weighted(rng, author_types, author_w)
+
+            if topic == "anxiety":
+                weights_st = list(anxiety_w_by_m[mi])
+                if author_type == "parent":
+                    weights_st[0] += 0.06
+                    weights_st[1] -= 0.03
+                    weights_st[2] -= 0.02
+                if author_type == "tech":
+                    weights_st[1] += 0.05
+                    weights_st[0] -= 0.03
+                if author_type == "kol":
+                    weights_st[2] += 0.04
+                    weights_st[0] -= 0.02
+                stance = pick_weighted(rng, anxiety_stances, [max(0.01, w) for w in weights_st])
+            else:
+                weights_st = list(kids_w_by_m[mi])
+                if author_type == "tech":
+                    weights_st[0] += 0.05
+                    weights_st[1] += 0.04
+                    weights_st[4] -= 0.03
+                if author_type == "parent":
+                    weights_st[3] += 0.03
+                    weights_st[4] += 0.02
+                if author_type == "kol":
+                    weights_st[1] += 0.05
+                    weights_st[2] += 0.03
+                stance = pick_weighted(rng, kids_stances, [max(0.01, w) for w in weights_st])
+
+            day = 1 + rng.randint(0, 27)
+            posted_at = f"{y:04d}-{m:02d}-{day:02d}"
+            url = make_url(source, gid, topic, stance)
+
+            if region == "CN":
+                original_text = make_text_cn(topic, stance, author_type, rng)
+                translation = None if rng.rand() < 0.28 else en_translation_stub(topic, stance, rng)
+            else:
+                original_text = make_text_en(topic, stance, author_type, rng)
+                translation = None if rng.rand() < 0.25 else cn_translation_stub(topic, stance, rng)
+
+            verified = 1 if rng.rand() < 0.08 else 0
+            ai_topic = topic
+            ai_stance = stance
+            ai_author = author_type
+            ai_region = region
+
+            override = False
+            if verified and rng.rand() < 0.18:
+                override = True
+                if topic == "anxiety":
+                    ai_stance = pick_weighted(rng, anxiety_stances, [1, 1, 1, 1])
+                else:
+                    ai_stance = pick_weighted(rng, kids_stances, [1, 1, 1, 1, 1])
+                if ai_stance == stance:
+                    ai_stance = anxiety_stances[(anxiety_stances.index(stance) + 1) % len(anxiety_stances)] if topic == "anxiety" else kids_stances[(kids_stances.index(stance) + 1) % len(kids_stances)]
+
+            conf_base = 0.62 + 0.30 * rng.rand()
+            if override:
+                conf_base -= 0.18
+            if source in ("oecd", "moe_cn"):
+                conf_base += 0.08
+            if author_type == "general":
+                conf_base -= 0.04
+            ai_confidence = round(clamp(conf_base, 0.50, 0.98), 2)
+
+            human_notes = ""
+            if verified:
+                if override:
+                    human_notes = rng.choice([
+                        "人工复核：立场与AI判断不一致，已调整为更贴近原文语气。",
+                        "复核后发现AI过度乐观/悲观，已按原文修正。",
+                        "标注纠错：AI stance 误判，已修正。",
+                    ])
+                else:
+                    human_notes = rng.choice(["", "人工复核通过。", "抽检通过。", "已确认无误。"])
+
+            ai_labels = {
+                "topic": ai_topic,
+                "stance": ai_stance,
+                "author_type": ai_author,
+                "region": ai_region,
+            }
+            out.append(
+                {
+                    "id": gid + 1,
+                    "source": source,
+                    "region": region,
+                    "author_type": author_type,
+                    "topic": topic,
+                    "stance": stance,
+                    "original_text": original_text,
+                    "translation": translation,
+                    "url": url,
+                    "posted_at": posted_at,
+                    "ai_confidence": ai_confidence,
+                    "ai_labels_json": json.dumps(ai_labels, ensure_ascii=False, separators=(",", ":")),
+                    "human_verified": verified,
+                    "human_notes": human_notes,
+                }
+            )
+            gid += 1
+    return out
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--count", type=int, default=500)
-    ap.add_argument("--mode", choices=["spread", "focus"], default="spread")
+    ap.add_argument("--mode", choices=["spread", "focus", "focus_real"], default="spread")
     ap.add_argument("--start", default="2025-10")
     ap.add_argument("--end", default="2026-04")
     ap.add_argument("--out", default="")
     args = ap.parse_args()
 
-    if args.mode == "focus":
+    if args.mode == "focus_real":
+        data = generate_focused_realistic(args.count, start_ym=args.start, end_ym=args.end)
+    elif args.mode == "focus":
         data = generate_focused(args.count, start_ym=args.start, end_ym=args.end)
     else:
         data = generate(args.count)
